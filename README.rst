@@ -30,7 +30,7 @@ Packages
 High Level Summary of Model
 ============
 
-The paper linked above provides lots of detail about the algorithm, however the basic concept is as follows. One of the main issues that arises when working on entity resolution is the fact that, generally speaking in real world scenarios, limit labeled data is available to train a model. To handle this issue the author proposes a transfer learning approach where the network is initially trained on a 'source' dataset with abundant match/non-match labels. These weights and biases are then transferred over to be used with the 'target' dataset where the labels are not known. In order for this to work the paper proposes an adversarial architecture using a gradient reversal layer during training to achieve dataset-independent internal representations. If the classifier is performing well on the source dataset and the internal representations are indistinguishable between source and target dataset than we have reason to believe the model will perform reasonably on the target dataset. Please see `this <http://proceedings.mlr.press/v37/ganin15.html>`_ paper for more details on the adversarial approach. We then predict on the target dataset and pick the highest confidence match and non-match pairs (P(match) closest to 1 and 0 respectively), we automatically label them and add them to the training set. We also pull out the lowest confidence pairs (P(match) closest to 0.5) and we label these by hand. At each iteration we continue to fine tune the model and continue to increase the size of the labeled target dataset. The steps to use the deepRL class are as follows. 
+The paper linked above provides lots of detail about the algorithm, however the basic concept is as follows. One of the main issues that arises when working on entity resolution is the fact that, generally speaking in real world scenarios, limit labeled data is available to train a model. To handle this issue the author proposes a transfer learning approach where the network is initially trained on a 'source' dataset with abundant match/non-match labels. These weights and biases are then transferred over to be used with the 'target' dataset where the labels are not known. In order for this to work the paper proposes an adversarial architecture using a gradient reversal layer during training to achieve dataset-independent internal representations in the BiGRU. If the classifier is performing well on the source dataset and the internal representations are indistinguishable between source and target dataset than we have reason to believe the model will perform reasonably on the target dataset. Please see `this <http://proceedings.mlr.press/v37/ganin15.html>`_ paper for more details on the adversarial approach. We then predict on the target dataset and pick the highest confidence match and non-match pairs (P(match) closest to 1 and 0 respectively), we automatically label them and add them to the training set. We also pull out the lowest confidence pairs (P(match) closest to 0.5) and we label these by hand. At each iteration we continue to fine tune the model and continue to increase the size of the labeled target dataset. The steps to use the deepRL class are as follows. 
 
 How Does It Work?
 =============
@@ -85,7 +85,7 @@ The code for this step might look like the following:
     
     vec_length = # the paper suggests 300 but this is up to the user
     y_target = # if any labels are known, this will help with the transfer learning but this argument is optional
-    y_target_indices = # optional but required if y_target is passed as a argument
+    y_target_indices = # optional but required if y_target is passed as an argument
     
     # initialize the class
     DL = DeepRL(
@@ -132,7 +132,7 @@ The code might look like the following:
     
 During training, the user can observe the progress of the loss and accuracy for the match/non-match classifier similar to training a standard keras model. Also at the end of each epoch the val f1, precision and recall is printed out. After each time running the function, the learning rate, epochs and batch size can be adjusted and the training method can be rerun until the model converges. 
 
-The next step is then to use transfer learning. First we have to build the model. The BiGRU and MLP layers of the model are taken from the source model and used in transfer learning. The output from the BiGRU is fed into the match/non-match MLP and also fed into a new MLP used to predict which dataset the observation came from. Also a gradient reversal layer is added between the BiGRU and the new MLP. The gradient reversal layer ensures that the dataset MLP is training to find differences in the internal representations (output of BiGRU) between the two datasets while the BiGRU is training to 'trick' the dataset MLP which will result in dataset independent internal representations. The build_adaptaion_model() method takes the following arguments:
+The next step is then to use transfer learning. First we have to build the model. The BiGRU and MLP layers of the model are taken from the source model and used in transfer learning. The output from the BiGRU is fed into the match/non-match MLP and also fed into a new MLP used to predict which dataset the observation came from. Also a gradient reversal layer is added between the BiGRU and the new MLP. The gradient reversal layer ensures that the dataset MLP is training to find differences in the internal representations (output of BiGRU) between the two datasets while the BiGRU is training to 'trick' the dataset MLP which will result in dataset independent internal representations. The build_adaptation_model() method takes the following parameters:
 
   Parameters
     summary : bool
@@ -147,7 +147,7 @@ The code will look like the following:
     
       DL.build_adaptation_model(True)
       
-Next we train the model. The train_adaptation_model() method takes the following arguments:
+Next we train the model. The train_adaptation_model() method takes the following parameters:
 
   Parameters
     lr : float
@@ -174,7 +174,7 @@ The code might look like the following:
     
 During training the user can observe the progress of the loss and accuracy for both the match/non-match classifier and the dataset classifier similar to training a standard keras model. If the dataset classifier is getting very high accuracy it means that the output of the BiGRU is significantly different between the source and target datasets. If this is the case, the BiGRU is not learning dataset independent internal representations. This can be corrected by adjusting the weights for the classifiers (last 2 arguments). The hyperparameters can be adjusted if the results are poor and the method can then be rerun. 
 
-After the user is satisfied with the performance of the adaptation model, we enter the active/self learning phase of the process. The target model must be constructed first because we will use it to predict on the unlabeled data. The BiGRU and match/non-match MLP layers from the adaptation model are used in the target model. The build_target_model() function takes the following arguments:
+After the user is satisfied with the performance of the adaptation model, we enter the active/self learning phase of the process. The target model must be constructed first because we will use it to predict on the unlabeled data. The BiGRU and match/non-match MLP layers from the adaptation model are used in the target model. The build_target_model() function takes the following parameters:
 
   Parameters
     transfer : bool
